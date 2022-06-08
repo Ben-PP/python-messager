@@ -10,12 +10,33 @@ class client:
         self.FORMAT = "utf-8"
         self.DISCONNECT_MESSAGE = "!DISCONNECT"
         self.SERVER = "172.16.160.16"
+        self.USER = socket.gethostname()
+        self.login()
         self.ADDR = (self.SERVER, self.PORT)
 
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client.connect(self.ADDR)
         self.connected = True
         print("[Connected]")
+        self.send(f"[SERVER]: User {self.USER} joinded to conversation!")
+    
+    def login(self):
+
+        srv = input("Server address(Default:172.16.160.16): ")
+        if srv != "":
+            self.SERVER = srv
+        
+        while True:
+            try:
+                prt = input("Port(Default:5050): ")
+                if prt != "":
+                    self.PORT = int(prt)
+                break
+            except:
+                print(f"Give a number. <{prt}> is not a valid number")
+        uname = input("Give username(Default: your IP): ")
+        if uname != "":
+            self.USER = uname
 
     def send(self, msg):
         message = msg.encode(self.FORMAT)
@@ -40,11 +61,11 @@ class client:
         while self.connected:
             message = input()
             if message == "exit":
-                self.send(self.DISCONNECT_MESSAGE)
+                self.send(f"[{self.USER}]: {self.DISCONNECT_MESSAGE}")
                 self.connected = False
                 sleep(1)
             else:
-                self.send(message)
+                self.send(f"[{self.USER}]: {message}")
 
         print("[Disconnected]")
 

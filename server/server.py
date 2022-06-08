@@ -1,3 +1,4 @@
+import re
 import socket
 import threading
 
@@ -12,8 +13,8 @@ class server:
         self.FORMAT = "utf-8"
         self.DISCONNECT_MESSAGE = "!DISCONNECT"
 
-        self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server.bind(self.ADDR)
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.bind(self.ADDR)
         self.serverup = True
 
         self.clients = []
@@ -22,46 +23,60 @@ class server:
         self.clients.append(client)
 
     def respond(self, conn, msg):
-        for client in self.clients:
-            if msg == self.DISCONNECT_MESSAGE:
-                message = msg.encode(self.FORMAT)
-                msg_length = len(message)
-                send_length = str(msg_length).encode(self.FORMAT)
-                send_length += b" " * (self.HEADER - len(send_length))
+
+        uname = msg.split(" ")
+        msg_section = uname[1]
+        uname = uname[0][1:-2:1]
+
+        
+        if msg_section == self.DISCONNECT_MESSAGE:
+            message = f"[SERVER]: User {uname} disconnected".encode(self.FORMAT)
+            msg_length = len(message)
+            send_length = str(msg_length).encode(self.FORMAT)
+            send_length += b" " * (self.HEADER - len(send_length))
+            for client in self.clients:
                 client[0].send(send_length)
                 client[0].send(message)
-
-            elif client[0] != conn:
-                message = msg.encode(self.FORMAT)
-                msg_length = len(message)
-                send_length = str(msg_length).encode(self.FORMAT)
-                send_length += b" " * (self.HEADER - len(send_length))
+        else:
+            message = msg.encode(self.FORMAT)
+            msg_length = len(message)
+            send_length = str(msg_length).encode(self.FORMAT)
+            send_length += b" " * (self.HEADER - len(send_length))
+            for client in self.clients:
+                if client[0] == conn:
+                    continue
                 client[0].send(send_length)
                 client[0].send(message)
 
     def handle_client(self, conn, addr):
         print(f"[NEW CONNECTION] {addr} connected.")
-
+        
         connected = True
         while connected:
             msg_length = conn.recv(self.HEADER).decode(self.FORMAT)
             if msg_length:
                 msg_length = int(msg_length)
                 msg = conn.recv(msg_length).decode(self.FORMAT)
-                if msg == self.DISCONNECT_MESSAGE:
+                regex_msg = re.search(self.DISCONNECT_MESSAGE, msg)
+
+                if regex_msg != None:
                     connected = False
                     self.clients.remove((conn, addr))
+                    print(f"[{addr}] {msg}")
+                    self.respond(conn, msg)
+                    break
+
                 print(f"[{addr}] {msg}")
-                self.respond(conn, f"[{str(addr[0])}] {msg}")
+                self.respond(conn, msg)
 
         conn.close()
 
     def start(self):
-        self.server.listen()
+        self.sock.listen()
         print(f"[LISTENING] server is listening on: {self.SERVER}:{self.PORT}")
 
         while self.serverup:
-            conn, addr = self.server.accept()
+            conn, addr = self.sock.accept()
             self.add_client((conn, addr))
             thread = threading.Thread(target=self.handle_client, args=(conn, addr))
             thread.start()
@@ -70,8 +85,8 @@ class server:
     print("[STARTING] server is starting...")
     
 def main():
-    ser = server()
-    ser.start()
+    serv = server()
+    serv.start()
 
 if __name__ == "__main__":
     main()

@@ -5,6 +5,8 @@ import threading
 class server:
 
     def __init__(self):
+        #TODO: 1. Generate asymmetric key
+        #TODO: 1. Generate symmetric key
         self.PORT = 5050
         self.SERVER = socket.gethostbyname(socket.gethostname())
         self.ADDR = (self.SERVER, self.PORT)
@@ -35,6 +37,7 @@ class server:
             send_length = str(msg_length).encode(self.FORMAT)
             send_length += b" " * (self.HEADER - len(send_length))
             for client in self.clients:
+                #TODO: 7. Encrypt using servers symmetric key
                 client[0].send(send_length)
                 client[0].send(message)
         else:
@@ -45,18 +48,24 @@ class server:
             for client in self.clients:
                 if client[0] == conn:
                     continue
+                #TODO: 7. Encrypt using servers symmetric key
                 client[0].send(send_length)
                 client[0].send(message)
 
+    #TODO: 2. client_handler class needed?
     def handle_client(self, conn, addr):
         print(f"[NEW CONNECTION] {addr} connected.")
-        
+        #TODO: 3. Send public key to client.
+        #TODO: 4. Receive symmetric key from client
+        #TODO: 5. Send server symmetric key to client 
         connected = True
         while connected:
             msg_length = conn.recv(self.HEADER).decode(self.FORMAT)
+            #TODO:  6. Decrypt received message with symmetric key
             if msg_length:
                 msg_length = int(msg_length)
                 msg = conn.recv(msg_length).decode(self.FORMAT)
+                #TODO: 6. Decrypt received message with symmetric key
                 regex_msg = re.search(self.DISCONNECT_MESSAGE, msg)
 
                 if regex_msg != None:

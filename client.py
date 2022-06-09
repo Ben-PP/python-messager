@@ -2,6 +2,11 @@ import socket
 import threading
 from time import sleep
 
+from Crypto.Cipher import PKCS1_OAEP
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad
+
 class client:
 
     def __init__(self):
@@ -17,11 +22,33 @@ class client:
         self.client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client.connect(self.ADDR)
         self.connected = True
-        #TODO: 1. Receive server public key.
-        #TODO: 2. Generate and send symmetric key to server.
-        #TODO: 3. Receive servers symmetric key
+        self.has_sym_key = False
+
+        self.private_key = self.gen_asym_keys(None)
+        self.public_key = self.gen_asym_keys(self.private_key)
+
+        self.send(self.public_key.export_key().decode())
+
+        self.SYM_KEY = self.receive_sym_key()
+        self.has_sym_key = True
+
         print("[Connected]")
         self.send(f"[SERVER]: User {self.USER} joinded to conversation!")
+
+    def receive_sym_key(self):
+        msg_length = self.client.recv(self.HEADER).decode(self.FORMAT)
+        if msg_length:
+            decrypt = PKCS1_OAEP.new(key=self.private_key)
+            msg_length = int(msg_length)
+            msg = self.client.recv(msg_length)
+            decrypted_msg = decrypt.decrypt(msg)
+            return decrypted_msg
+
+    def gen_asym_keys(self, key):
+        if key is None:
+            return RSA.generate(2048)
+        else:
+            return key.public_key()
     
     def login(self):
 
@@ -41,8 +68,17 @@ class client:
         if uname != "":
             self.USER = uname
 
+    def encrypt(self, msg):
+        cipher = AES.new(self.SYM_KEY, AES.MODE_CBC)
+        ciphered_msg = cipher.encrypt(pad(msg,AES.block_size))
+        ciphered_msg = ciphered_msg+cipher.iv
+        return ciphered_msg
+
     def send(self, msg):
-        message = msg.encode(self.FORMAT)
+        if self.has_sym_key:
+            message = self.encrypt(msg.encode(self.FORMAT))
+        else:
+            message = msg.encode(self.FORMAT)
         msg_length = len(message)
         send_length = str(msg_length).encode(self.FORMAT)
         send_length += b" " * (self.HEADER - len(send_length))

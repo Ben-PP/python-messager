@@ -1,12 +1,20 @@
+import imp
 import re
 import socket
 import threading
+import Crypto
+from Crypto.Cipher import PKCS1_OAEP
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import unpad
+import os
 
 class server:
 
     def __init__(self):
-        #TODO: 1. Generate asymmetric key
         #TODO: 1. Generate symmetric key
+        self.SYM_KEY = self.gen_sym_key()
+
         self.PORT = 5050
         self.SERVER = socket.gethostbyname(socket.gethostname())
         self.ADDR = (self.SERVER, self.PORT)
@@ -20,6 +28,11 @@ class server:
         self.serverup = True
 
         self.clients = []
+    
+    def gen_sym_key(self):
+        AES_key_length = 32
+        sym_key = os.urandom(AES_key_length)
+        return sym_key
     
     def add_client(self, client):
         self.clients.append(client)
@@ -51,23 +64,46 @@ class server:
                 #TODO: 7. Encrypt using servers symmetric key
                 client[0].send(send_length)
                 client[0].send(message)
+    
+    def receive_pub_key(self, conn):
+        msg_length = conn.recv(self.HEADER).decode(self.FORMAT)
+        if msg_length:
+            msg_length = int(msg_length)
+            msg = conn.recv(msg_length).decode(self.FORMAT)
+            client_pub_key = RSA.import_key(msg)
+        return client_pub_key
+    
+    def send_sym_key(self, conn, pub_key):
+        cipher = PKCS1_OAEP.new(key=pub_key)
+        cipher_msg = cipher.encrypt(self.SYM_KEY)
+        msg_length = len(cipher_msg)
+        send_length = str(msg_length).encode(self.FORMAT)
+        send_length += b" " * (self.HEADER - len(send_length))
+        conn.send(send_length)
+        conn.send(cipher_msg)
+        
 
     #TODO: 2. client_handler class needed?
     def handle_client(self, conn, addr):
         print(f"[NEW CONNECTION] {addr} connected.")
-        #TODO: 3. Send public key to client.
-        #TODO: 4. Receive symmetric key from client
-        #TODO: 5. Send server symmetric key to client 
+        #TODO: 3. Receive clients public key
+        client_pub_key = self.receive_pub_key(conn)
+        #TODO: 4. Send symmetric key to client
+        self.send_sym_key(conn, client_pub_key)
         connected = True
         while connected:
             msg_length = conn.recv(self.HEADER).decode(self.FORMAT)
             #TODO:  6. Decrypt received message with symmetric key
             if msg_length:
                 msg_length = int(msg_length)
-                msg = conn.recv(msg_length).decode(self.FORMAT)
+                msg = conn.recv(msg_length)
+                iv = msg[-16:]
+                cipher = AES.new(self.SYM_KEY, AES.MODE_CBC, iv)
+                msg = unpad(cipher.decrypt(msg[0:-16:]), AES.block_size)
+                msg = msg.decode(self.FORMAT)
                 #TODO: 6. Decrypt received message with symmetric key
-                regex_msg = re.search(self.DISCONNECT_MESSAGE, msg)
 
+                regex_msg = re.search(self.DISCONNECT_MESSAGE, msg)
                 if regex_msg != None:
                     connected = False
                     self.clients.remove((conn, addr))

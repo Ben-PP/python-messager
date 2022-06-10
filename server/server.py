@@ -1,18 +1,16 @@
-import imp
+import os
 import re
 import socket
 import threading
-import Crypto
+
 from Crypto.Cipher import PKCS1_OAEP
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
-import os
 
 class server:
 
     def __init__(self):
-        #TODO: 1. Generate symmetric key
         self.SYM_KEY = self.gen_sym_key()
 
         self.PORT = 5050
@@ -36,6 +34,9 @@ class server:
     
     def add_client(self, client):
         self.clients.append(client)
+    
+    def remove_client(self, client):
+        self.clients.remove(client)
 
     def respond(self, conn, msg):
 
@@ -50,21 +51,25 @@ class server:
             send_length = str(msg_length).encode(self.FORMAT)
             send_length += b" " * (self.HEADER - len(send_length))
             for client in self.clients:
-                #TODO: 7. Encrypt using servers symmetric key
-                client[0].send(send_length)
-                client[0].send(message)
+                try:
+                    client[0].send(send_length)
+                    client[0].send(message)
+                except BrokenPipeError:
+                    print("[ERROR] BrokenPipeError")
         else:
             message = msg.encode(self.FORMAT)
             msg_length = len(message)
             send_length = str(msg_length).encode(self.FORMAT)
             send_length += b" " * (self.HEADER - len(send_length))
             for client in self.clients:
-                if client[0] == conn:
-                    continue
-                #TODO: 7. Encrypt using servers symmetric key
-                client[0].send(send_length)
-                client[0].send(message)
-    
+                try:
+                    if client[0] == conn:
+                        continue
+                    client[0].send(send_length)
+                    client[0].send(message)
+                except BrokenPipeError:
+                    print("[ERROR] BrokenPipeError")
+
     def receive_pub_key(self, conn):
         msg_length = conn.recv(self.HEADER).decode(self.FORMAT)
         if msg_length:
@@ -82,18 +87,13 @@ class server:
         conn.send(send_length)
         conn.send(cipher_msg)
         
-
-    #TODO: 2. client_handler class needed?
     def handle_client(self, conn, addr):
         print(f"[NEW CONNECTION] {addr} connected.")
-        #TODO: 3. Receive clients public key
         client_pub_key = self.receive_pub_key(conn)
-        #TODO: 4. Send symmetric key to client
         self.send_sym_key(conn, client_pub_key)
         connected = True
         while connected:
             msg_length = conn.recv(self.HEADER).decode(self.FORMAT)
-            #TODO:  6. Decrypt received message with symmetric key
             if msg_length:
                 msg_length = int(msg_length)
                 msg = conn.recv(msg_length)
@@ -101,19 +101,19 @@ class server:
                 cipher = AES.new(self.SYM_KEY, AES.MODE_CBC, iv)
                 msg = unpad(cipher.decrypt(msg[0:-16:]), AES.block_size)
                 msg = msg.decode(self.FORMAT)
-                #TODO: 6. Decrypt received message with symmetric key
 
                 regex_msg = re.search(self.DISCONNECT_MESSAGE, msg)
                 if regex_msg != None:
                     connected = False
                     self.clients.remove((conn, addr))
                     print(f"[{addr}] {msg}")
-                    self.respond(conn, msg)
                     break
 
                 print(f"[{addr}] {msg}")
                 self.respond(conn, msg)
-
+            else:
+                self.remove_client((conn, addr))
+                break
         conn.close()
 
     def start(self):

@@ -83,18 +83,15 @@ class client:
         send_length = str(msg_length).encode(self.FORMAT)
         send_length += b" " * (self.HEADER - len(send_length))
 
-        #TODO: 5. Encrypt using servers symmetric key
         self.client.send(send_length)
         self.client.send(message)
 
     def listen(self):
         while self.connected:
             msg_length = self.client.recv(self.HEADER).decode(self.FORMAT)
-            #TODO: 4. Decrypt using servers symmetric key
             if msg_length:
                 msg_length = int(msg_length)
                 msg = self.client.recv(msg_length).decode(self.FORMAT)
-                #TODO: 4. Decrypt using servers symmetric key
                 print(f"{msg}")
 
     

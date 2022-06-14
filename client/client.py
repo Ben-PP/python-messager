@@ -11,7 +11,7 @@ class client:
 
     def __init__(self):
         self.HEADER = 128
-        self.PORT = 5050
+        self.PORT = 5060
         self.FORMAT = "utf-8"
         self.DISCONNECT_MESSAGE = "!DISCONNECT"
         self.SERVER = "172.16.160.16"
@@ -58,7 +58,7 @@ class client:
         
         while True:
             try:
-                prt = input("Port(Default:5050): ")
+                prt = input("Port(Default:5060): ")
                 if prt != "":
                     self.PORT = int(prt)
                 break

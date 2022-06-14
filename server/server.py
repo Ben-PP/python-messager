@@ -125,7 +125,7 @@ class server:
             self.add_client((conn, addr))
             thread = threading.Thread(target=self.handle_client, args=(conn, addr))
             thread.start()
-            print(f"[ACTIVE CONNECTIONS] {threading.activeCount() - 1}")
+            print(f"[ACTIVE CONNECTIONS] {threading.active_count() - 1}")
 
     print("[STARTING] server is starting...")
     

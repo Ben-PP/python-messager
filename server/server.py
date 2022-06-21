@@ -13,7 +13,7 @@ class server:
     def __init__(self):
         self.SYM_KEY = self.gen_sym_key()
 
-        self.PORT = 5050
+        self.PORT = 5060
         self.SERVER = socket.gethostbyname(socket.gethostname())
         self.ADDR = (self.SERVER, self.PORT)
 

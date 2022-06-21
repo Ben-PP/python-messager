@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: python-messager-server-service
+spec:
+  type: LoadBalancer
+  ports:
+    - protocol: TCP
+      port: 5060
+      targetPort: 5060
+  selector:
+    app: python-messager

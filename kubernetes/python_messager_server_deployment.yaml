@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: python_messager_server_deployment
+  labels:
+    app: python_messager
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: python_messager
+  template:
+    metadata:
+      labels:
+        app: python_messager
+    spec:
+      containers:
+      - name: python_messager_server
+        image: benpp/python_messager_server:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5060
